@@ -13,13 +13,14 @@ def main():
 
 
 def generate_augmentation_masks(reference_video_path: str, reference_labels_path: str, output_path: str):
-    frames = load_video_frames(reference_video_path)
+    frames = load_video_frames(reference_video_path)[:-1]  # gripper values don't include one for the last frame
     masks = np.stack([mask_blue_tpu_pixels(frame) for frame in frames])
     gripper_values = load_gripper_values(reference_labels_path)
 
     # remove duplicate gripper values
-    gripper_values, unique_indices = np.unique(gripper_values, return_index=True)
-    masks = masks[unique_indices]
+    unique_gripper_values = np.unique(gripper_values)
+    masks = np.array([masks[gripper_values == gripper_value].any(axis=0) for gripper_value in unique_gripper_values])
+    gripper_values = unique_gripper_values
 
     # sort gripper values
     sorted_indices = np.argsort(gripper_values)
@@ -41,8 +42,8 @@ def mask_blue_tpu_pixels(frame: np.ndarray) -> np.ndarray:
     is_bright = (hsv[:, :, 2] > 140)
     gripper_mask = is_blue_hue & is_saturated & is_bright
 
-    # expand mask by 2 pixel margin
-    pixels = 2
+    # expand mask by a pixel margin
+    pixels = 1
     structure = np.ones((2 * pixels + 1, 2 * pixels + 1), dtype=bool)
     gripper_mask = binary_dilation(gripper_mask.reshape(hsv[:, :, 0].shape), structure)
 
