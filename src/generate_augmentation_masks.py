@@ -17,6 +17,16 @@ def generate_augmentation_masks(reference_video_path: str, reference_labels_path
     frames = load_video_frames(reference_video_path)
     masks = np.stack([mask_blue_tpu_pixels(frame) for frame in frames])
     gripper_values = load_gripper_values(reference_labels_path)
+
+    # remove duplicate gripper values
+    gripper_values, unique_indices = np.unique(gripper_values, return_index=True)
+    masks = masks[unique_indices]
+
+    # sort gripper values
+    sorted_indices = np.argsort(gripper_values)
+    gripper_values = gripper_values[sorted_indices]
+    masks = masks[sorted_indices]
+
     np.save(output_path, {
         'gripper_values': gripper_values,
         'masks': masks
